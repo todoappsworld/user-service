@@ -1,23 +1,24 @@
-# Use the official Node.js image as the base image
+# Use official Node.js image
 FROM node:20-alpine
 
-# Set the working directory inside the container
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json files to the working directory
+# Copy package.json and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy the rest of the application code to the working directory
+# Copy application code
 COPY . .
 
-# Build the TypeScript code (if applicable)
+# Build the TypeScript code
 RUN npm run build
 
-# Expose the port the app runs on
+# Expose port
 EXPOSE 3000
 
-# Command to run the application
-CMD ["npm", "start"]
+# Run the application
+CMD ["node", "dist/index.js"]

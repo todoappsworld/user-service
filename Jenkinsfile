@@ -3,6 +3,7 @@ pipeline {
     environment {
         AWS_ACCESS_KEY_ID = credentials('1909')
         AWS_SECRET_ACCESS_KEY = credentials('1909')
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials-id')
     }
     stages {
         stage('Checkout') {
@@ -10,24 +11,32 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/todoappsworld/user-service.git', credentialsId: '1fc287af-fcff-421a-aeba-734cc9660dde'
             }
         }
-        stage('Install dependencies') {
+        stage('Build Docker Image') {
             steps {
-                sh 'npm install'
+                script {
+                    dockerImage = docker.build("saymontr/user-service:latest")
+                }
             }
         }
-        stage('Lint') {
+        stage('Run Tests') {
             steps {
-                sh 'npm run lint'
+                script {
+                    dockerImage.inside {
+                        sh 'npm install'
+                        sh 'npm run lint'
+                        sh 'npm test'
+                        sh 'npm run build'
+                    }
+                }
             }
         }
-        stage('Test') {
+        stage('Push Docker Image') {
             steps {
-                sh 'npm test'
-            }
-        }
-        stage('Build') {
-            steps {
-                sh 'npm run build'
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials-id') {
+                        dockerImage.push()
+                    }
+                }
             }
         }
         stage('Package') {
@@ -38,6 +47,13 @@ pipeline {
         stage('Deploy to Test') {
             steps {
                 sh 'sam deploy --template-file packaged.yaml --stack-name user-service-test-stack --capabilities CAPABILITY_IAM --parameter-overrides Environment=testing'
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    kubernetesDeploy(configs: 'k8s/*.yaml', kubeConfig: [path: '/root/.kube/config'])
+                }
             }
         }
         stage('Deploy to Prod') {
