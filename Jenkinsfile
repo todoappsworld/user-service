@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/todoappsworld/user-service.git'
+                git branch: 'main', url: 'https://github.com/todoappsworld/user-service.git', credentialsId: '1fc287af-fcff-421a-aeba-734cc9660dde'
             }
         }
         stage('Install dependencies') {
